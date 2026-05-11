@@ -14,3 +14,4 @@ ENV/
 .idea/
 .vscode/
 temperature_model.pkl
+rain_model.pkl

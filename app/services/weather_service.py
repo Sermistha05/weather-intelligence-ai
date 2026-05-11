@@ -21,5 +21,6 @@ async def fetch_weather(city: str):
         "pressure": data["main"]["pressure"],
         "wind_speed": data["wind"]["speed"],
         "rain_probability": data.get("rain", {}).get("1h", 0.0),
-        "uv_index": 0.0  # OpenWeather free tier doesn't include UV, use 0 or call UV endpoint
+        "uv_index": 0.0,
+        "rain": 1 if "rain" in data else 0
     }

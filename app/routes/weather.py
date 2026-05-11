@@ -1,10 +1,11 @@
-from app.services.prediction_service import predict_temperature
+from app.services.prediction_service import predict_temperature, predict_rain, predict_temperature_by_city
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.weather import Weather
 from app.schemas.weather import WeatherResponse
 from app.services.weather_service import fetch_weather
+from datetime import datetime, timezone
 
 router = APIRouter()
 
@@ -38,7 +39,43 @@ def get_temperature_prediction(
     hour: int
 ):
     predicted_temp = predict_temperature(humidity, pressure, wind_speed, hour)
+    return {"predicted_temperature": predicted_temp}
 
-    return {
-        "predicted_temperature": predicted_temp
-    }
+@router.get("/predict/rain")
+def get_rain_prediction(
+    humidity: float,
+    pressure: float,
+    wind_speed: float,
+    hour: int
+):
+    try:
+        result = predict_rain(humidity, pressure, wind_speed, hour)
+        return {"will_rain": bool(result)}
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+@router.get("/predict/temperature/by-city")
+async def get_temperature_prediction_by_city(city: str):
+    try:
+        return await predict_temperature_by_city(city, fetch_weather)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/predict/rain/by-city")
+async def get_rain_prediction_by_city(city: str):
+    try:
+        weather = await fetch_weather(city)
+        hour = datetime.now(timezone.utc).hour
+        result = predict_rain(
+            humidity=weather["humidity"],
+            pressure=weather["pressure"],
+            wind_speed=weather["wind_speed"],
+            hour=hour
+        )
+        return {"city": city, "current_weather": weather, "will_rain": bool(result)}
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

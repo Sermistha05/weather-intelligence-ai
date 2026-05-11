@@ -9,6 +9,7 @@ class WeatherCreate(BaseModel):
     wind_speed: float
     rain_probability: float
     uv_index: float
+    rain: int = 0
 
 class WeatherResponse(BaseModel):
     id: int
@@ -19,6 +20,7 @@ class WeatherResponse(BaseModel):
     wind_speed: float
     rain_probability: float
     uv_index: float
+    rain: int
     timestamp: datetime
     
     class Config:

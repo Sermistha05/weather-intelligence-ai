@@ -1,10 +1,8 @@
 from sqlalchemy.orm import declarative_base
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
-# sqlalchemy is used for database interactions. We define the database engine, session, and base class for our models here. 
-# The get_db function provides a way to get a database session that can be used in our API routes, ensuring that the session
-# is properly closed after use.
+
 engine = create_engine(settings.DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -15,3 +13,11 @@ def get_db():
         yield db
     finally:
         db.close()
+
+def run_migrations():
+    """Add new columns to existing SQLite DB without dropping data."""
+    with engine.connect() as conn:
+        columns = [row[1] for row in conn.execute(text("PRAGMA table_info(weather)"))]
+        if "rain" not in columns:
+            conn.execute(text("ALTER TABLE weather ADD COLUMN rain INTEGER DEFAULT 0"))
+            conn.commit()

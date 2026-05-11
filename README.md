@@ -24,6 +24,10 @@ cp .env.example .env
 4. Run the application:
 ```bash
 uvicorn main:app --reload
+
+or
+
+python -m uvicorn main:app --reload
 ```
 
 ## Docker
