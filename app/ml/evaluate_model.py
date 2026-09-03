@@ -1,13 +1,10 @@
 import sqlite3
 import numpy as np
 import pandas as pd
-import joblib
-
 from sklearn.ensemble import RandomForestRegressor
-
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 DB_PATH = "weather.db"
-MODEL_PATH = "temperature_model.pkl"
 
 
 def main():
@@ -33,10 +30,8 @@ def main():
     df["day"] = df["timestamp"].dt.day
     df["month"] = df["timestamp"].dt.month
 
-    # Cyclical time features
     df["hour_sin"] = np.sin(2 * np.pi * df["hour"] / 24)
     df["hour_cos"] = np.cos(2 * np.pi * df["hour"] / 24)
-
     df["month_sin"] = np.sin(2 * np.pi * df["month"] / 12)
     df["month_cos"] = np.cos(2 * np.pi * df["month"] / 12)
 
@@ -48,7 +43,6 @@ def main():
     df["temp_lag_6"] = grouped.shift(6)
     df["temp_lag_24"] = grouped.shift(24)
 
-    # Rolling temperature averages
     df["temp_roll_6"] = (
         df.groupby("location")["temperature"]
         .transform(lambda x: x.shift(1).rolling(6).mean())
@@ -59,7 +53,6 @@ def main():
         .transform(lambda x: x.shift(1).rolling(24).mean())
     )
 
-    # Remove rows without historical features
     df = df.dropna()
 
     features = [
@@ -83,30 +76,53 @@ def main():
         "temp_roll_24",
     ]
 
-    X = df[features]
-    y = df["temperature"]
+    # City-wise chronological split
+    train_parts = []
+    test_parts = []
 
-    # Train final model on all available historical data
+    for city, city_df in df.groupby("location"):
+        city_df = city_df.sort_values("timestamp")
+
+        split = int(len(city_df) * 0.8)
+
+        train_parts.append(city_df.iloc[:split])
+        test_parts.append(city_df.iloc[split:])
+
+    train_df = pd.concat(train_parts)
+    test_df = pd.concat(test_parts)
+
+    X_train = train_df[features]
+    y_train = train_df["temperature"]
+
+    X_test = test_df[features]
+    y_test = test_df["temperature"]
+
+    # Train model
     model = RandomForestRegressor(
         n_estimators=150,
         random_state=42,
         n_jobs=-1
     )
 
-    model.fit(X, y)
+    model.fit(X_train, y_train)
 
-    joblib.dump(model, MODEL_PATH)
+    predictions = model.predict(X_test)
 
-    print("\n✅ Temperature model trained successfully!")
-    print("----------------------------------------")
+    mae = mean_absolute_error(y_test, predictions)
+    rmse = mean_squared_error(y_test, predictions) ** 0.5
+    r2 = r2_score(y_test, predictions)
+
+    print("\n📊 CITY-WISE TIME-BASED EVALUATION")
+    print("--------------------------------------")
     print(f"Dataset size : {len(df)}")
-    print(f"Features     : {len(features)}")
-    print(f"Model        : Random Forest Regressor")
-    print(f"Saved to     : {MODEL_PATH}")
-    print("----------------------------------------")
+    print(f"Training data: {len(train_df)}")
+    print(f"Test data    : {len(test_df)}")
+    print(f"Cities       : {df['location'].nunique()}")
+    print(f"MAE          : {mae:.2f} °C")
+    print(f"RMSE         : {rmse:.2f} °C")
+    print(f"R² Score     : {r2:.3f}")
+    print("--------------------------------------")
 
 
 if __name__ == "__main__":
     main()
-
-
