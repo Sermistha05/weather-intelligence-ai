@@ -19,7 +19,7 @@ async def fetch_weather(city: str):
         "temperature": data["main"]["temp"],
         "humidity": data["main"]["humidity"],
         "pressure": data["main"]["pressure"],
-        "wind_speed": data["wind"]["speed"],
+        "wind_speed": round(data["wind"]["speed"] * 3.6, 2),  # OWM returns m/s with units=metric; convert to km/h
         "rain_probability": data.get("rain", {}).get("1h", 0.0),
         "uv_index": 0.0,
         "rain": 1 if "rain" in data else 0
