@@ -5,6 +5,7 @@ function App() {
   const [city, setCity] = useState('')
   const [weather, setWeather] = useState(null)
   const [temperaturePrediction, setTemperaturePrediction] = useState(null)
+  const [rainPrediction, setRainPrediction] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   
@@ -15,6 +16,7 @@ function App() {
     setLoading(true)
     setError('')
     setTemperaturePrediction(null)
+    setRainPrediction(null)
 
     try {
       const response = await fetch(
@@ -56,6 +58,17 @@ function App() {
       setTemperaturePrediction(predictedTemperature)
     } catch (err) {
       console.error('Temperature prediction error:', err)
+    }
+
+    try {
+      const rainResponse = await fetch(
+        `http://127.0.0.1:8000/predict/rain/by-city?city=${encodeURIComponent(city)}`
+      )
+      if (!rainResponse.ok) throw new Error('Rain prediction failed')
+      const rainData = await rainResponse.json()
+      setRainPrediction(rainData)
+    } catch (err) {
+      console.error('Rain prediction error:', err)
     } finally {
       setLoading(false)
     }
@@ -150,8 +163,15 @@ function App() {
                 <h3>Rain Prediction</h3>
                 <p>AI precipitation analysis</p>
                 <strong>
-                  {weather.rain_probability}%
+                  {rainPrediction === null
+                    ? 'Loading...'
+                    : `${rainPrediction.rain_probability_pct}%`}
                 </strong>
+                {rainPrediction !== null && (
+                  <p style={{ marginTop: '8px', fontSize: '14px', color: rainPrediction.will_rain ? '#f87171' : '#4ade80' }}>
+                    {rainPrediction.will_rain ? 'Rain Expected' : 'No Rain Expected'}
+                  </p>
+                )}
               </div>
             </section>
 

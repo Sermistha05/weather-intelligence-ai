@@ -1,4 +1,4 @@
-from app.services.prediction_service import predict_temperature, predict_rain, predict_temperature_by_city
+from app.services.prediction_service import predict_temperature, predict_rain, predict_rain_proba, predict_temperature_by_city
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.database import get_db
@@ -68,13 +68,13 @@ async def get_rain_prediction_by_city(city: str):
     try:
         weather = await fetch_weather(city)
         hour = datetime.now(timezone.utc).hour
-        result = predict_rain(
+        result = predict_rain_proba(
             humidity=weather["humidity"],
             pressure=weather["pressure"],
             wind_speed=weather["wind_speed"],
             hour=hour
         )
-        return {"city": city, "current_weather": weather, "will_rain": bool(result)}
+        return {"city": city, "will_rain": result["will_rain"], "rain_probability_pct": result["rain_probability_pct"]}
     except FileNotFoundError as e:
         raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:

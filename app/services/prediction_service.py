@@ -50,6 +50,14 @@ def predict_rain(humidity, pressure, wind_speed, hour) -> int:
     prediction = model.predict(_build_rain_features(humidity, pressure, wind_speed, hour))
     return int(prediction[0])
 
+def predict_rain_proba(humidity, pressure, wind_speed, hour) -> dict:
+    model = _get_rain_model()
+    features = _build_rain_features(humidity, pressure, wind_speed, hour)
+    will_rain = int(model.predict(features)[0])
+    # RandomForestClassifier supports predict_proba: index 1 = probability of rain
+    rain_probability_pct = round(float(model.predict_proba(features)[0][1]) * 100, 1)
+    return {"will_rain": bool(will_rain), "rain_probability_pct": rain_probability_pct}
+
 async def predict_temperature_by_city(city: str, fetch_weather_fn) -> dict:
     weather = await fetch_weather_fn(city)
     now = datetime.now(timezone.utc)
