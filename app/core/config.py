@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     DATABASE_URL: str
     OPENWEATHER_API_KEY: str
+    GEMINI_API_KEY: str = ""
     
     class Config:
         env_file = ".env"

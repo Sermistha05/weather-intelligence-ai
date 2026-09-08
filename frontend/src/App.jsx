@@ -12,6 +12,8 @@ function App() {
   const [rainPrediction, setRainPrediction] = useState(null)
   const [historyData, setHistoryData] = useState(null)
   const [historyLoading, setHistoryLoading] = useState(false)
+  const [aiInsight, setAiInsight] = useState(null)
+  const [aiLoading, setAiLoading] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   
@@ -24,6 +26,7 @@ function App() {
     setTemperaturePrediction(null)
     setRainPrediction(null)
     setHistoryData(null)
+    setAiInsight(null)
 
     try {
       const response = await fetch(
@@ -93,6 +96,21 @@ function App() {
       setHistoryData([])
     } finally {
       setHistoryLoading(false)
+    }
+
+    setAiLoading(true)
+    try {
+      const aiResponse = await fetch(
+        `http://127.0.0.1:8000/ai/insight?city=${encodeURIComponent(city)}`
+      )
+      if (!aiResponse.ok) throw new Error('AI insight failed')
+      const aiData = await aiResponse.json()
+      setAiInsight(aiData.insight)
+    } catch (err) {
+      console.error('AI insight error:', err)
+      setAiInsight('Weather intelligence is temporarily unavailable. Please try again shortly.')
+    } finally {
+      setAiLoading(false)
     }
   }
 
@@ -201,6 +219,19 @@ function App() {
                   </p>
                 )}
               </div>
+            </section>
+
+            <section className="ai-card">
+              <div className="ai-card-header">
+                <span>✨</span>
+                <h2>AI Weather Intelligence</h2>
+              </div>
+              {aiLoading && (
+                <p className="ai-state">Generating AI insight...</p>
+              )}
+              {!aiLoading && aiInsight && (
+                <p className="ai-insight">{aiInsight}</p>
+              )}
             </section>
 
             <section className="history-card">

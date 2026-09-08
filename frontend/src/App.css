@@ -176,6 +176,44 @@ body {
   padding: 30px;
 }
 
+.ai-card {
+  background: rgba(17, 28, 45, 0.82);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 20px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
+  margin-top: 20px;
+  padding: 28px 30px;
+}
+
+.ai-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.ai-card-header span {
+  font-size: 22px;
+}
+
+.ai-card-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.ai-state {
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.ai-insight {
+  color: #e2e8f0;
+  font-size: 15px;
+  line-height: 1.7;
+  border-left: 3px solid #38bdf8;
+  padding-left: 16px;
+}
+
 .history-card h2 {
   margin-bottom: 8px;
 }

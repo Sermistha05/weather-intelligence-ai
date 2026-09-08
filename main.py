@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from app.core.config import settings
 from app.core.database import engine, run_migrations
 from app.models import base
-from app.routes import health, weather
+from app.routes import health, weather, ai
 from app.services.scheduler_service import scheduler
 
 base.Base.metadata.create_all(bind=engine)
@@ -23,6 +23,7 @@ app.add_middleware(
 
 app.include_router(health.router, tags=["health"])
 app.include_router(weather.router, tags=["weather"])
+app.include_router(ai.router, tags=["ai"])
 
 @app.get("/")
 def root():
