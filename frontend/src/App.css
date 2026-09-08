@@ -180,8 +180,40 @@ body {
   margin-bottom: 8px;
 }
 
-.history-card p {
+.history-subtitle {
   color: #94a3b8;
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+
+.history-state {
+  color: #94a3b8;
+  padding: 20px 0;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  margin-top: 8px;
+}
+
+.chart-block {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(148, 163, 184, 0.08);
+  border-radius: 14px;
+  padding: 20px 16px 12px;
+}
+
+.chart-block--full {
+  grid-column: 1 / -1;
+}
+
+.chart-block h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-bottom: 16px;
 }
 
 @media (max-width: 700px) {
@@ -211,6 +243,14 @@ body {
 
   .prediction-grid {
     grid-template-columns: 1fr;
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-block--full {
+    grid-column: 1;
   }
 }
 

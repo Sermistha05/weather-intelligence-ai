@@ -1,5 +1,5 @@
 from app.services.prediction_service import predict_temperature, predict_rain, predict_rain_proba, predict_temperature_by_city
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.weather import Weather
@@ -24,10 +24,16 @@ async def get_current_weather(city: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/weather/history", response_model=list[WeatherResponse])
-def get_weather_history(db: Session = Depends(get_db)):
+def get_weather_history(
+    db: Session = Depends(get_db),
+    city: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+):
     try:
-        weather_records = db.query(Weather).all()
-        return weather_records
+        query = db.query(Weather)
+        if city:
+            query = query.filter(Weather.location == city)
+        return query.order_by(Weather.timestamp.desc()).limit(limit).all()
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
