@@ -171,6 +171,11 @@ body {
   color: #38bdf8;
 }
 
+.prediction-card strong.unavailable {
+  color: #94a3b8;
+  font-size: 20px;
+}
+
 .history-card {
   margin-top: 20px;
   padding: 30px;

@@ -9,6 +9,7 @@ function App() {
   const [city, setCity] = useState('')
   const [weather, setWeather] = useState(null)
   const [temperaturePrediction, setTemperaturePrediction] = useState(null)
+  const [tempPredictionError, setTempPredictionError] = useState(false)
   const [rainPrediction, setRainPrediction] = useState(null)
   const [historyData, setHistoryData] = useState(null)
   const [historyLoading, setHistoryLoading] = useState(false)
@@ -24,6 +25,7 @@ function App() {
     setLoading(true)
     setError('')
     setTemperaturePrediction(null)
+    setTempPredictionError(false)
     setRainPrediction(null)
     setHistoryData(null)
     setAiInsight(null)
@@ -32,11 +34,7 @@ function App() {
       const response = await fetch(
         `http://127.0.0.1:8000/weather/current?city=${encodeURIComponent(city)}`
       )
-
-      if (!response.ok) {
-        throw new Error('Weather data not found')
-      }
-
+      if (!response.ok) throw new Error('Weather data not found')
       const data = await response.json()
       setWeather(data)
     } catch (err) {
@@ -46,72 +44,65 @@ function App() {
       return
     }
 
-    try {
-      const predictionResponse = await fetch(
-        `http://127.0.0.1:8000/predict/temperature/by-city?city=${encodeURIComponent(city)}`
-      )
-
-      if (!predictionResponse.ok) {
-        throw new Error('Temperature prediction failed')
-      }
-
-      const predictionData = await predictionResponse.json()
-      const predictedTemperature =
-        typeof predictionData === 'number'
-          ? predictionData
-          : predictionData.predicted_temperature ??
-            predictionData.temperature ??
-            predictionData.prediction ??
-            predictionData.value ??
-            null
-
-      setTemperaturePrediction(predictedTemperature)
-    } catch (err) {
-      console.error('Temperature prediction error:', err)
-    }
-
-    try {
-      const rainResponse = await fetch(
-        `http://127.0.0.1:8000/predict/rain/by-city?city=${encodeURIComponent(city)}`
-      )
-      if (!rainResponse.ok) throw new Error('Rain prediction failed')
-      const rainData = await rainResponse.json()
-      setRainPrediction(rainData)
-    } catch (err) {
-      console.error('Rain prediction error:', err)
-    } finally {
-      setLoading(false)
-    }
-
+    // Mark section-level loading states before firing concurrent requests
     setHistoryLoading(true)
-    try {
-      const historyResponse = await fetch(
-        `http://127.0.0.1:8000/weather/history?city=${encodeURIComponent(city)}&limit=50`
-      )
-      if (!historyResponse.ok) throw new Error('History fetch failed')
-      const raw = await historyResponse.json()
-      setHistoryData([...raw].reverse())
-    } catch (err) {
-      console.error('Weather history error:', err)
-      setHistoryData([])
-    } finally {
-      setHistoryLoading(false)
+    setAiLoading(true)
+
+    const [tempResult, rainResult, historyResult, aiResult] = await Promise.allSettled([
+      // Temperature prediction
+      fetch(`http://127.0.0.1:8000/predict/temperature/by-city?city=${encodeURIComponent(city)}`)
+        .then(r => { if (!r.ok) throw new Error('Temperature prediction failed'); return r.json() })
+        .then(d => typeof d === 'number' ? d : d.predicted_temperature ?? d.temperature ?? d.prediction ?? d.value ?? null),
+
+      // Rain prediction
+      fetch(`http://127.0.0.1:8000/predict/rain/by-city?city=${encodeURIComponent(city)}`)
+        .then(r => { if (!r.ok) throw new Error('Rain prediction failed'); return r.json() }),
+
+      // Weather history
+      fetch(`http://127.0.0.1:8000/weather/history?city=${encodeURIComponent(city)}&limit=50`)
+        .then(r => { if (!r.ok) throw new Error('History fetch failed'); return r.json() })
+        .then(raw => [...raw].reverse()),
+
+      // AI insight
+      fetch(`http://127.0.0.1:8000/ai/insight?city=${encodeURIComponent(city)}`)
+        .then(r => { if (!r.ok) throw new Error('AI insight failed'); return r.json() })
+        .then(d => d.insight),
+    ])
+
+    // Temperature prediction
+    if (tempResult.status === 'fulfilled') {
+      setTemperaturePrediction(tempResult.value)
+    } else {
+      console.error('Temperature prediction error:', tempResult.reason)
+      setTempPredictionError(true)
     }
 
-    setAiLoading(true)
-    try {
-      const aiResponse = await fetch(
-        `http://127.0.0.1:8000/ai/insight?city=${encodeURIComponent(city)}`
-      )
-      if (!aiResponse.ok) throw new Error('AI insight failed')
-      const aiData = await aiResponse.json()
-      setAiInsight(aiData.insight)
-    } catch (err) {
-      console.error('AI insight error:', err)
-      setAiInsight('Weather intelligence is temporarily unavailable. Please try again shortly.')
-    } finally {
-      setAiLoading(false)
+    // Rain prediction
+    if (rainResult.status === 'fulfilled') {
+      setRainPrediction(rainResult.value)
+    } else {
+      console.error('Rain prediction error:', rainResult.reason)
     }
+
+    // Weather history
+    if (historyResult.status === 'fulfilled') {
+      setHistoryData(historyResult.value)
+    } else {
+      console.error('Weather history error:', historyResult.reason)
+      setHistoryData([])
+    }
+    setHistoryLoading(false)
+
+    // AI insight
+    if (aiResult.status === 'fulfilled') {
+      setAiInsight(aiResult.value)
+    } else {
+      console.error('AI insight error:', aiResult.reason)
+      setAiInsight('Weather intelligence is temporarily unavailable. Please try again shortly.')
+    }
+    setAiLoading(false)
+
+    setLoading(false)
   }
 
   const formatTimestamp = (ts) => {
@@ -201,7 +192,13 @@ function App() {
                 <span>🌡️</span>
                 <h3>Temperature Prediction</h3>
                 <p>AI predicted temperature</p>
-                <strong>{temperaturePrediction !== null? `${temperaturePrediction}°C`: 'Loading...'}</strong>
+                <strong className={tempPredictionError ? 'unavailable' : ''}>
+                  {tempPredictionError
+                    ? 'Unavailable'
+                    : temperaturePrediction !== null
+                      ? `${temperaturePrediction}°C`
+                      : 'Loading...'}
+                </strong>
               </div>
 
               <div className="prediction-card">

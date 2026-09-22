@@ -42,4 +42,11 @@ docker run -p 8000:8000 weather-api
 
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
+
+## Start the frontend
+- Navigate to the frontend directory:
+```bash
+- cd frontend
+```
+npm run dev
 # Made by Sermistha

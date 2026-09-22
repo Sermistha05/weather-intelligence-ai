@@ -63,7 +63,10 @@ Rules:
         response = client.models.generate_content(
             model="gemini-3.8-flash",
             contents=prompt,
-            config={"max_output_tokens": 350},
+            config=genai.types.GenerateContentConfig(
+                max_output_tokens=350,
+                temperature=0.7,
+            ),
         )
         return response.text.strip()
     except Exception:

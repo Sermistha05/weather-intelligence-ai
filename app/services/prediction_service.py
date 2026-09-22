@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 temp_model = joblib.load("temperature_model.pkl")
 
-_rain_model = None
+_rain_model_cache: dict = {}
 
 FEATURES = [
     "humidity", "pressure", "wind_speed", "rain_probability", "uv_index",
@@ -18,12 +18,11 @@ FEATURES = [
 ]
 
 def _get_rain_model():
-    global _rain_model
-    if _rain_model is None:
+    if "model" not in _rain_model_cache:
         if not os.path.exists("rain_model.pkl"):
             raise FileNotFoundError("rain_model.pkl not found. Run app/ml/train_rain_model.py first.")
-        _rain_model = joblib.load("rain_model.pkl")
-    return _rain_model
+        _rain_model_cache["model"] = joblib.load("rain_model.pkl")
+    return _rain_model_cache["model"]
 
 def _build_rain_features(humidity, pressure, wind_speed, hour):
     return pd.DataFrame({"hour": [hour], "humidity": [humidity], "pressure": [pressure], "wind_speed": [wind_speed]})
@@ -64,12 +63,11 @@ async def predict_temperature_by_city(city: str, fetch_weather_fn) -> dict:
     hour = now.hour
 
     # Fetch last 24 temperature readings for this city from DB
-    conn = sqlite3.connect("weather.db")
-    hist = pd.read_sql_query(
-        "SELECT temperature FROM weather WHERE location = ? AND temperature IS NOT NULL ORDER BY timestamp DESC LIMIT 24",
-        conn, params=(city,)
-    )
-    conn.close()
+    with sqlite3.connect("weather.db") as conn:
+        hist = pd.read_sql_query(
+            "SELECT temperature FROM weather WHERE location = ? AND temperature IS NOT NULL ORDER BY timestamp DESC LIMIT 24",
+            conn, params=(city,)
+        )
 
     temps = hist["temperature"].tolist()  # index 0 = most recent
 
