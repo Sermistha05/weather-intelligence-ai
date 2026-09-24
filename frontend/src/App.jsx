@@ -107,7 +107,7 @@ function App() {
 
   const formatTimestamp = (ts) => {
     if (!ts) return ''
-    const d = new Date(ts)
+    const d = new Date(ts + 'Z')
     return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
   }
 
@@ -160,7 +160,7 @@ function App() {
                 <h2>{weather.temperature}°C</h2>
 
                 <p>
-                  {weather.rain ? 'Rain Detected' : 'No Rain'}
+                  {weather.rain ? 'Currently Raining' : 'Dry'}
                 </p>
               </div>
 
@@ -182,7 +182,7 @@ function App() {
 
                 <div>
                   <span>UV Index</span>
-                  <strong>{weather.uv_index}</strong>
+                  <strong>{weather.uv_index === 0 ? 'N/A' : weather.uv_index}</strong>
                 </div>
               </div>
             </section>
@@ -204,7 +204,7 @@ function App() {
               <div className="prediction-card">
                 <span>🌧️</span>
                 <h3>Rain Prediction</h3>
-                <p>AI precipitation analysis</p>
+                <p>ML Rain Probability</p>
                 <strong>
                   {rainPrediction === null
                     ? 'Loading...'
@@ -233,7 +233,7 @@ function App() {
 
             <section className="history-card">
               <h2>Weather History Analytics</h2>
-              <p className="history-subtitle">{weather.location} — Last 50 records</p>
+              <p className="history-subtitle">{weather.location} — Last {historyData ? historyData.length : 0} {historyData?.length === 1 ? 'record' : 'records'}</p>
 
               {historyLoading && (
                 <p className="history-state">Loading history...</p>
