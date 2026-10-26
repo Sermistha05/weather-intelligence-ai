@@ -18,6 +18,8 @@ function App() {
   const [alerts, setAlerts] = useState(null)
   const [alertsLoading, setAlertsLoading] = useState(false)
   const [alertsError, setAlertsError] = useState(false)
+  const [forecastData, setForecastData] = useState(null)
+  const [forecastLoading, setForecastLoading] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   
@@ -34,10 +36,11 @@ function App() {
     setAiInsight(null)
     setAlerts(null)
     setAlertsError(false)
+    setForecastData(null)
 
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/weather/current?city=${encodeURIComponent(city)}`
+        `http://localhost:8000/weather/current?city=${encodeURIComponent(city)}`
       )
       if (!response.ok) throw new Error('Weather data not found')
       const data = await response.json()
@@ -53,31 +56,37 @@ function App() {
     setHistoryLoading(true)
     setAiLoading(true)
     setAlertsLoading(true)
+    setForecastLoading(true)
 
-    const [tempResult, rainResult, historyResult, aiResult, alertsResult] = await Promise.allSettled([
+    const [tempResult, rainResult, historyResult, aiResult, alertsResult, forecastResult] = await Promise.allSettled([
       // Temperature prediction
-      fetch(`http://127.0.0.1:8000/predict/temperature/by-city?city=${encodeURIComponent(city)}`)
+      fetch(`http://localhost:8000/predict/temperature/by-city?city=${encodeURIComponent(city)}`)
         .then(r => { if (!r.ok) throw new Error('Temperature prediction failed'); return r.json() })
         .then(d => typeof d === 'number' ? d : d.predicted_temperature ?? d.temperature ?? d.prediction ?? d.value ?? null),
 
       // Rain prediction
-      fetch(`http://127.0.0.1:8000/predict/rain/by-city?city=${encodeURIComponent(city)}`)
+      fetch(`http://localhost:8000/predict/rain/by-city?city=${encodeURIComponent(city)}`)
         .then(r => { if (!r.ok) throw new Error('Rain prediction failed'); return r.json() }),
 
       // Weather history
-      fetch(`http://127.0.0.1:8000/weather/history?city=${encodeURIComponent(city)}&limit=50`)
+      fetch(`http://localhost:8000/weather/history?city=${encodeURIComponent(city)}&limit=50`)
         .then(r => { if (!r.ok) throw new Error('History fetch failed'); return r.json() })
         .then(raw => [...raw].reverse()),
 
       // AI insight
-      fetch(`http://127.0.0.1:8000/ai/insight?city=${encodeURIComponent(city)}`)
+      fetch(`http://localhost:8000/ai/insight?city=${encodeURIComponent(city)}`)
         .then(r => { if (!r.ok) throw new Error('AI insight failed'); return r.json() })
         .then(d => d.advisor),
 
       // Weather alerts
-      fetch(`http://127.0.0.1:8000/alerts?city=${encodeURIComponent(city)}`)
+      fetch(`http://localhost:8000/alerts?city=${encodeURIComponent(city)}`)
         .then(r => { if (!r.ok) throw new Error('Alerts fetch failed'); return r.json() })
         .then(d => d.alerts),
+
+      // Forecast
+      fetch(`http://localhost:8000/forecast?city=${encodeURIComponent(city)}`)
+        .then(r => { if (!r.ok) throw new Error('Forecast fetch failed'); return r.json() })
+        .then(d => d.forecast),
     ])
 
     // Temperature prediction
@@ -122,6 +131,15 @@ function App() {
     }
     setAlertsLoading(false)
 
+    // Forecast
+    if (forecastResult.status === 'fulfilled') {
+      setForecastData(forecastResult.value)
+    } else {
+      console.error('Forecast error:', forecastResult.reason)
+      setForecastData([])
+    }
+    setForecastLoading(false)
+
     setLoading(false)
   }
 
@@ -129,6 +147,15 @@ function App() {
     if (!ts) return ''
     const d = new Date(ts + 'Z')
     return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  }
+
+  // OWM forecast dt_txt format: "2025-07-15 12:00:00" — already UTC, no Z needed
+  const formatForecastLabel = (dt_txt) => {
+    if (!dt_txt) return ''
+    const d = new Date(dt_txt.replace(' ', 'T') + 'Z')
+    const day = d.toLocaleDateString(undefined, { weekday: 'short' })
+    const hh = String(d.getHours()).padStart(2, '0')
+    return `${day} ${hh}:00`
   }
 
   return (
@@ -236,6 +263,57 @@ function App() {
                   </p>
                 )}
               </div>
+            </section>
+
+            <section className="forecast-card">
+              <h2>Forecast Intelligence</h2>
+              <p className="forecast-subtitle">{weather.location} — Next 5 days (3-hourly)</p>
+
+              {forecastLoading && <p className="forecast-state">Loading forecast...</p>}
+
+              {!forecastLoading && forecastData && forecastData.length === 0 && (
+                <p className="forecast-state">No forecast data available for this city.</p>
+              )}
+
+              {!forecastLoading && forecastData && forecastData.length > 0 && (
+                <div className="charts-grid">
+                  <div className="chart-block">
+                    <h3>Temperature Forecast</h3>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <LineChart data={forecastData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" />
+                        <XAxis dataKey="dt_txt" tickFormatter={formatForecastLabel} tick={{ fill: '#94a3b8', fontSize: 11 }} interval={5} />
+                        <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} unit="°C" width={45} />
+                        <Tooltip
+                          contentStyle={{ background: '#111c2d', border: '1px solid #26364d', borderRadius: '8px' }}
+                          labelStyle={{ color: '#94a3b8', fontSize: '12px' }}
+                          labelFormatter={formatForecastLabel}
+                          formatter={(v) => [`${v}°C`, 'Temperature']}
+                        />
+                        <Line type="monotone" dataKey="temp" stroke="#38bdf8" dot={false} strokeWidth={2} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="chart-block">
+                    <h3>Rain Probability Forecast</h3>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <BarChart data={forecastData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" />
+                        <XAxis dataKey="dt_txt" tickFormatter={formatForecastLabel} tick={{ fill: '#94a3b8', fontSize: 11 }} interval={5} />
+                        <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} unit="%" width={40} domain={[0, 100]} />
+                        <Tooltip
+                          contentStyle={{ background: '#111c2d', border: '1px solid #26364d', borderRadius: '8px' }}
+                          labelStyle={{ color: '#94a3b8', fontSize: '12px' }}
+                          labelFormatter={formatForecastLabel}
+                          formatter={(v) => [`${v}%`, 'Rain Probability']}
+                        />
+                        <Bar dataKey="rain_probability" fill="#818cf8" opacity={0.85} radius={[3, 3, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
             </section>
 
             <section className="ai-card">
