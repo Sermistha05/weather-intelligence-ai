@@ -15,6 +15,9 @@ function App() {
   const [historyLoading, setHistoryLoading] = useState(false)
   const [aiInsight, setAiInsight] = useState(null)
   const [aiLoading, setAiLoading] = useState(false)
+  const [alerts, setAlerts] = useState(null)
+  const [alertsLoading, setAlertsLoading] = useState(false)
+  const [alertsError, setAlertsError] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   
@@ -29,6 +32,8 @@ function App() {
     setRainPrediction(null)
     setHistoryData(null)
     setAiInsight(null)
+    setAlerts(null)
+    setAlertsError(false)
 
     try {
       const response = await fetch(
@@ -47,8 +52,9 @@ function App() {
     // Mark section-level loading states before firing concurrent requests
     setHistoryLoading(true)
     setAiLoading(true)
+    setAlertsLoading(true)
 
-    const [tempResult, rainResult, historyResult, aiResult] = await Promise.allSettled([
+    const [tempResult, rainResult, historyResult, aiResult, alertsResult] = await Promise.allSettled([
       // Temperature prediction
       fetch(`http://127.0.0.1:8000/predict/temperature/by-city?city=${encodeURIComponent(city)}`)
         .then(r => { if (!r.ok) throw new Error('Temperature prediction failed'); return r.json() })
@@ -66,7 +72,12 @@ function App() {
       // AI insight
       fetch(`http://127.0.0.1:8000/ai/insight?city=${encodeURIComponent(city)}`)
         .then(r => { if (!r.ok) throw new Error('AI insight failed'); return r.json() })
-        .then(d => d.insight),
+        .then(d => d.advisor),
+
+      // Weather alerts
+      fetch(`http://127.0.0.1:8000/alerts?city=${encodeURIComponent(city)}`)
+        .then(r => { if (!r.ok) throw new Error('Alerts fetch failed'); return r.json() })
+        .then(d => d.alerts),
     ])
 
     // Temperature prediction
@@ -98,9 +109,18 @@ function App() {
       setAiInsight(aiResult.value)
     } else {
       console.error('AI insight error:', aiResult.reason)
-      setAiInsight('Weather intelligence is temporarily unavailable. Please try again shortly.')
+      setAiInsight({ summary: 'Weather intelligence is temporarily unavailable. Please try again shortly.', clothing: '—', rain_advice: '—', outdoor_activity: '—', advisory: '—' })
     }
     setAiLoading(false)
+
+    // Weather alerts
+    if (alertsResult.status === 'fulfilled') {
+      setAlerts(alertsResult.value)
+    } else {
+      console.error('Alerts error:', alertsResult.reason)
+      setAlertsError(true)
+    }
+    setAlertsLoading(false)
 
     setLoading(false)
   }
@@ -160,7 +180,7 @@ function App() {
                 <h2>{weather.temperature}°C</h2>
 
                 <p>
-                  {weather.rain ? 'Currently Raining' : 'Dry'}
+                  {weather.rain ? 'Rain Recorded' : 'Dry'}
                 </p>
               </div>
 
@@ -227,7 +247,55 @@ function App() {
                 <p className="ai-state">Generating AI insight...</p>
               )}
               {!aiLoading && aiInsight && (
-                <p className="ai-insight">{aiInsight}</p>
+                <div className="advisor-grid">
+                  <div className="advisor-item">
+                    <span className="advisor-label">🌤️ Summary</span>
+                    <span className="advisor-value">{aiInsight.summary}</span>
+                  </div>
+                  <div className="advisor-item">
+                    <span className="advisor-label">👕 Clothing</span>
+                    <span className="advisor-value">{aiInsight.clothing}</span>
+                  </div>
+                  <div className="advisor-item">
+                    <span className="advisor-label">🌧️ Rain Advice</span>
+                    <span className="advisor-value">{aiInsight.rain_advice}</span>
+                  </div>
+                  <div className="advisor-item">
+                    <span className="advisor-label">🏃 Outdoor Activity</span>
+                    <span className="advisor-value">{aiInsight.outdoor_activity}</span>
+                  </div>
+                  <div className="advisor-item">
+                    <span className="advisor-label">⚠️ Advisory</span>
+                    <span className="advisor-value">{aiInsight.advisory}</span>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            <section className="alerts-card">
+              <div className="alerts-header">
+                <span>🚨</span>
+                <h2>Weather Alerts</h2>
+              </div>
+              {alertsLoading && <p className="alerts-state">Checking for alerts...</p>}
+              {!alertsLoading && alertsError && (
+                <p className="alerts-state alerts-state--error">Unable to load alerts. Please try again.</p>
+              )}
+              {!alertsLoading && !alertsError && alerts && alerts.length === 0 && (
+                <p className="alerts-state alerts-state--clear">✅ No active weather alerts for this city.</p>
+              )}
+              {!alertsLoading && !alertsError && alerts && alerts.length > 0 && (
+                <div className="alerts-list">
+                  {alerts.map((alert, i) => (
+                    <div key={i} className={`alert-item alert-item--${alert.severity}`}>
+                      <div className="alert-item-header">
+                        <span className="alert-severity-badge">{alert.severity.toUpperCase()}</span>
+                        <span className="alert-title">{alert.title}</span>
+                      </div>
+                      <p className="alert-message">{alert.message}</p>
+                    </div>
+                  ))}
+                </div>
               )}
             </section>
 

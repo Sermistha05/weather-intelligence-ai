@@ -44,7 +44,7 @@ async def get_ai_insight(city: str):
         will_rain = bool(weather.get("rain", 0))
         rain_probability_pct = 0.0
 
-    insight = generate_insight(
+    advisor = generate_insight(
         city=city,
         temp=weather["temperature"],
         humidity=weather["humidity"],
@@ -56,4 +56,4 @@ async def get_ai_insight(city: str):
         will_rain=will_rain,
     )
 
-    return {"city": city, "insight": insight}
+    return {"city": city, "advisor": advisor}
