@@ -5,6 +5,7 @@ from app.core.database import engine, run_migrations
 from app.models import base
 from app.routes import health, weather, ai
 from app.routes.alerts import router as alerts_router
+from app.routes.forecast import router as forecast_router
 from app.services.scheduler_service import scheduler
 
 base.Base.metadata.create_all(bind=engine)
@@ -26,6 +27,7 @@ app.include_router(health.router, tags=["health"])
 app.include_router(weather.router, tags=["weather"])
 app.include_router(ai.router, tags=["ai"])
 app.include_router(alerts_router, tags=["alerts"])
+app.include_router(forecast_router, tags=["forecast"])
 
 @app.get("/")
 def root():
